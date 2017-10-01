@@ -23,6 +23,8 @@ import java.util.*;
 public class SimilarityFinder {
 
     HashMap<String,ArrayList<String[]>> data=new HashMap<String,ArrayList<String[]>>();
+    HashMap<String,HashMap<String,SimElement>> dataSims=new HashMap<String,HashMap<String,SimElement>>();
+
 
     String[] stopWords=new String[]{ "a", "about", "above", "above", "across", "after", "afterwards", "again", "against", "all", "almost", "alone", "along", "already", "also","although","always","am","among", "amongst", "amoungst", "amount",  "an", "and", "another", "any","anyhow","anyone","anything","anyway", "anywhere", "are", "around", "as",  "at", "back","be","became", "because","become","becomes", "becoming", "been", "before", "beforehand", "behind", "being", "below", "beside", "besides", "between", "beyond", "bill", "both", "bottom","but", "by", "call", "can", "cannot", "cant", "co", "con", "could", "couldnt", "cry", "de", "describe", "detail", "do", "done", "down", "due", "during", "each", "eg", "eight", "either", "eleven","else", "elsewhere", "empty", "enough", "etc", "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few", "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former", "formerly", "forty", "found", "four", "from", "front", "full", "further", "get", "give", "go", "had", "has", "hasnt", "have", "he", "hence", "her", "here", "hereafter", "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however", "hundred", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its", "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may", "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move", "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless", "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now", "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other", "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own","part", "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed", "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since", "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime", "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that", "the", "their", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "therefore", "therein", "thereupon", "these", "they", "thickv", "thin", "third", "this", "those", "though", "three", "through", "throughout", "thru", "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty", "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well", "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while", "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "within", "would", "yet", "you", "your", "yours", "yourself", "yourselves", "the"};
     String[] pronouns=new String[]{"I","me","we","us","you","he","she","him","her","they","them","thou"};
@@ -47,6 +49,41 @@ public class SimilarityFinder {
     ArrayList<String> tripleNames =new ArrayList<String>();
     HashMap<String, Integer> monthMap=new HashMap<String, Integer>();
     String[] testStrings=new String[]{"increase","expand","decrease","change","cat"};  //{"increase","decrease","change","measure","cat"}
+
+    class SimElement{
+        String name;
+        int match=0;
+        int nearMatch=0;
+        float nearSum=0;
+        float max=Float.MIN_VALUE;
+        float min=Float.MAX_VALUE;
+
+        public SimElement(String name) {
+            this.name = name;
+        }
+
+        public void addMatch(){
+            match++;
+            updateMinMax(1);
+        }
+
+        public void addNearrMatch(float val){
+            nearMatch+=val;
+            nearSum++;
+            updateMinMax(val);
+        }
+
+        private void updateMinMax(float val){
+            max=Math.max(max,val);
+            min=Math.min(min,val);
+        }
+
+    }
+
+
+
+
+
 
     public static void main(String[] args) {
         SimilarityFinder cc=new SimilarityFinder();
@@ -348,6 +385,8 @@ public class SimilarityFinder {
         String[] dataString=null;
         // int limit=2000;
         float max=Float.NEGATIVE_INFINITY;
+        float res=0;
+
 
         while(itr.hasNext()/*&& limit>0*/){
             // limit--;
@@ -355,10 +394,15 @@ public class SimilarityFinder {
             String key=itr.next();
             ArrayList<String[]> val=data.get(key);
 
-            if(val.size()>1){
+            HashMap<String,SimElement> smMap=new HashMap<String,SimElement>();
+
+            if(val.size()>1 && !dataSims.keySet().contains(key)){
 
                 for (int i = 0; i <val.size() ; i++) {
                     String[] val1=val.get(i);
+
+                    SimElement sm=new SimElement(key);
+
                     for (int j = i+1; j <val.size() ; j++) {
                         String[] val2 = val.get(j);
 
@@ -366,12 +410,21 @@ public class SimilarityFinder {
 
 //parts[1],fileName,num,conf
 
-
-
-
                             if(val1[0].equalsIgnoreCase(val2[0])&& val1[2].equalsIgnoreCase(val2[2])&& val1[3].equalsIgnoreCase(val2[3])){ //ides are different but it is the same triple (Happens when articles are retracted)
                                 continue;
                             }
+
+
+                            if(val1[0].equalsIgnoreCase(val2[0])){
+                                sm.addMatch();
+                            }
+                            else{
+                                res=checkForNegation(val1[0],val2[0]);
+                                if(res>0){
+                                    sm.addNearrMatch(res);
+                                }
+                            }
+
 
 
 
@@ -421,7 +474,14 @@ public class SimilarityFinder {
                         }
 
                     }
+
+                    smMap.put(val1[0],sm);
+
                 }
+
+
+                dataSims.put(key,smMap);
+
             }
             count++;
         }
