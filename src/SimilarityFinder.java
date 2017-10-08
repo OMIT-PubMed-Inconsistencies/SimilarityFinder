@@ -23,8 +23,8 @@ import java.util.*;
 public class SimilarityFinder {
 
     HashMap<String,ArrayList<String[]>> data=new HashMap<String,ArrayList<String[]>>();
-    HashMap<String,HashMap<String,SimElement>> dataSims=new HashMap<String,HashMap<String,SimElement>>();
-
+    //HashMap<String,HashMap<String,SimElement>> dataSims=new HashMap<String,HashMap<String,SimElement>>();
+    HashMap<String,ArrayList<SimElement>> dataSims=new HashMap<String,ArrayList<SimElement>>();
 
     String[] stopWords=new String[]{ "a", "about", "above", "above", "across", "after", "afterwards", "again", "against", "all", "almost", "alone", "along", "already", "also","although","always","am","among", "amongst", "amoungst", "amount",  "an", "and", "another", "any","anyhow","anyone","anything","anyway", "anywhere", "are", "around", "as",  "at", "back","be","became", "because","become","becomes", "becoming", "been", "before", "beforehand", "behind", "being", "below", "beside", "besides", "between", "beyond", "bill", "both", "bottom","but", "by", "call", "can", "cannot", "cant", "co", "con", "could", "couldnt", "cry", "de", "describe", "detail", "do", "done", "down", "due", "during", "each", "eg", "eight", "either", "eleven","else", "elsewhere", "empty", "enough", "etc", "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few", "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former", "formerly", "forty", "found", "four", "from", "front", "full", "further", "get", "give", "go", "had", "has", "hasnt", "have", "he", "hence", "her", "here", "hereafter", "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however", "hundred", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its", "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may", "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move", "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless", "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now", "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other", "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own","part", "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed", "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since", "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime", "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that", "the", "their", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "therefore", "therein", "thereupon", "these", "they", "thickv", "thin", "third", "this", "those", "though", "three", "through", "throughout", "thru", "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty", "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well", "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while", "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "within", "would", "yet", "you", "your", "yours", "yourself", "yourselves", "the"};
     String[] pronouns=new String[]{"I","me","we","us","you","he","she","him","her","they","them","thou"};
@@ -34,6 +34,7 @@ public class SimilarityFinder {
     float sigma=0.1f;
     HashMap<String,Float> frqDictionary=new HashMap<String,Float>();
     HashMap<String,String> lemmaDictionary=new HashMap<String,String>();
+    String outputPath="../output/";
     String tripleFolder="../output/04_TripleCreator";
     HashSet<Integer> dateIDs =new HashSet<Integer>();
     HashMap<Integer,Integer[]> idToDates =new HashMap<Integer,Integer[]>();
@@ -50,13 +51,42 @@ public class SimilarityFinder {
     HashMap<String, Integer> monthMap=new HashMap<String, Integer>();
     String[] testStrings=new String[]{"increase","expand","decrease","change","cat"};  //{"increase","decrease","change","measure","cat"}
 
-    class SimElement{
+    class SimElement implements Comparable{
         String name;
+
+        @Override
+        public int compareTo(Object o) {
+            SimElement s=(SimElement)o;
+          //  System.out.println("baaaaaa");
+
+          //  double num= (Math.log(((SimElement)o).val)/Math.log((s.val)));
+
+
+
+            //double num=1-(s.val/val);
+
+            //num=Math.pow(10,num);
+            double num=(100000*s.val) -(100000*val);
+
+       //     System.out.println(num);
+
+            return Math.round((float)num);
+
+            //  return -Math.round(10*(val-s.val));
+        }
+
         int match=0;
         int nearMatch=0;
         float nearSum=0;
         float max=Float.MIN_VALUE;
         float min=Float.MAX_VALUE;
+        float val=0;
+        float confidance=0; //As a a multiplication of two % eg 60*70
+        String[] fileName=new String[2];
+        String[] num=new String[2];
+        ArrayList<String[]> matchList=new ArrayList<String[]>();     // fileName, num
+        ArrayList<String[]> nearMatchList=new ArrayList<String[]>();   // fileName, num
+
 
         public SimElement(String name) {
             this.name = name;
@@ -68,8 +98,8 @@ public class SimilarityFinder {
         }
 
         public void addNearrMatch(float val){
-            nearMatch+=val;
-            nearSum++;
+            nearMatch++;
+            nearSum+=val;
             updateMinMax(val);
         }
 
@@ -78,17 +108,71 @@ public class SimilarityFinder {
             min=Math.min(min,val);
         }
 
+        public void CalculateVal(){
+            if (max>1){
+                System.err.println("Max Error!!!");
+            }
+
+            confidance=confidance/(match+nearMatch);
+            val=(confidance*(match+nearSum))/(match+nearMatch);
+        }
+
     }
 
+    public void test(){
+        ArrayList<SimElement> l=new ArrayList<>();
+        float mul=0.0000001f;
+        mul=0.0000001f;
+        SimElement a=new SimElement("a");
+        a.val=5*mul;
+        l.add(a);
+        SimElement b=new SimElement("b");
+        b.val=20*mul;
+        l.add(b);
+        SimElement c=new SimElement("c");
+        c.val=10*mul;
+        l.add(c);
+        System.out.println();
+        Collections.sort(l);
+        System.out.println();
+    }
+/*
+    class SimCompare implements Comparator<SimElement> {
+
+        @Override
+        public int compare(SimElement o1, SimElement o2) {
+            // write comparison logic here like below , it's just a sample
+
+          //  double a=Math.log(((SimElement)o2).val);
+          //  double b=Math.log(((SimElement)o1).val);
+
+            double a=((SimElement)o2).val;
+            double b=((SimElement)o1).val;
 
 
+           double num=1- (b/a);
+          //  num=Math.pow(10,num);
 
+
+            return Math.round((float)num);
+        }
+    }
+*/
 
 
     public static void main(String[] args) {
+
         SimilarityFinder cc=new SimilarityFinder();
 
+        if(args.length>0){
+            //System.out.println(args[0]);
+            //System.exit(0);
+            cc.tripleFolder=args[0];
+        }
 
+
+
+cc.test();
 
         cc.loadDictionaries();
         cc.readList();
@@ -96,7 +180,7 @@ public class SimilarityFinder {
        cc.analize();
       // cc.grabDates();
 
-
+      cc.writeSimResults();
 
 
 
@@ -366,6 +450,10 @@ public class SimilarityFinder {
 
                 }
 
+                bufferedReader.close();
+                fileReader.close();
+
+
             }
             catch (Exception e) {
                 e.printStackTrace();
@@ -386,24 +474,48 @@ public class SimilarityFinder {
         // int limit=2000;
         float max=Float.NEGATIVE_INFINITY;
         float res=0;
+        boolean add=false;
+        String progress="";
 
 
         while(itr.hasNext()/*&& limit>0*/){
             // limit--;
 
+            for (int i = 0; i <progress.length() ; i++) {
+                System.out.print("\b");
+            }
+            progress=count+" out of "+data.keySet().size();
+            System.out.println(progress);
+
+            count++;
+
             String key=itr.next();
             ArrayList<String[]> val=data.get(key);
 
-            HashMap<String,SimElement> smMap=new HashMap<String,SimElement>();
+          //  HashMap<String,SimElement> smMap=new HashMap<String,SimElement>();
+            ArrayList<SimElement> smList=new ArrayList<SimElement>();
+            HashSet<String> doneSim=new HashSet<String>();
 
             if(val.size()>1 && !dataSims.keySet().contains(key)){
 
                 for (int i = 0; i <val.size() ; i++) {
+                    add=false;
                     String[] val1=val.get(i);
 
-                    SimElement sm=new SimElement(key);
+                    if(doneSim.contains(val1[0])){  //To prevent repetitions
+                        continue;
+                    }
+                    doneSim.add(val1[0]);
 
-                    for (int j = i+1; j <val.size() ; j++) {
+                    SimElement sm=new SimElement(val1[0]);
+                    sm.matchList.add(new String[]{val1[1],val1[2]});
+
+                    for (int j = 0; j <val.size() ; j++) {
+
+                        if(i==j){
+                            continue;
+                        }
+
                         String[] val2 = val.get(j);
 
                         if (!val1[1].equalsIgnoreCase(val2[1])) { //No point in comparing in the same abstract
@@ -411,22 +523,29 @@ public class SimilarityFinder {
 //parts[1],fileName,num,conf
 
                             if(val1[0].equalsIgnoreCase(val2[0])&& val1[2].equalsIgnoreCase(val2[2])&& val1[3].equalsIgnoreCase(val2[3])){ //ides are different but it is the same triple (Happens when articles are retracted)
-                                continue;
-                            }
+                               continue;
+                           }
 
 
                             if(val1[0].equalsIgnoreCase(val2[0])){
                                 sm.addMatch();
+                                add=true;
+                                sm.matchList.add(new String[]{val2[1],val2[2]});
                             }
                             else{
                                 res=checkForNegation(val1[0],val2[0]);
                                 if(res>0){
                                     sm.addNearrMatch(res);
+                                    add=true;
+                                    sm.nearMatchList.add(new String[]{val2[1],val2[2]});
                                 }
                             }
 
-
-
+                            sm.confidance+=(Float.parseFloat(val1[3])*100)*(Float.parseFloat(val2[3])*100);
+                           // sm.fileName[0]=val1[1];
+                          //  sm.fileName[1]=val2[1];
+                          //  sm.num[0]=val1[2];
+                          //  sm.num[1]=val2[2];
 
 //git
 
@@ -475,19 +594,166 @@ public class SimilarityFinder {
 
                     }
 
-                    smMap.put(val1[0],sm);
-
+                    if(add) {
+                        //smMap.put(val1[0], sm);
+                        smList.add(sm);
+                    }
                 }
 
 
-                dataSims.put(key,smMap);
+               // if(smMap.size()>0) {
+               //     dataSims.put(key, smMap);
+               // }
+                if(smList.size()>0) {
+                    dataSims.put(key, smList);
+                }
+
+              //  printSimData();
 
             }
             count++;
+
+
+            //TODO :: Delete this
+           // if(dataSims.size()>50){
+           //     break;
+            //}
+
         }
 
+    calcDataSim();
 
 
+    }
+
+
+    private void calcDataSim(){
+        System.out.println("Calculating similarities");
+        Iterator<String> itr=dataSims.keySet().iterator();
+        HashMap<String,ArrayList<SimElement>> temp=new HashMap<String,ArrayList<SimElement>>();
+
+        int count=1;
+        String progress="";
+
+        while(itr.hasNext()){
+
+
+            for (int i = 0; i <progress.length() ; i++) {
+                System.out.print("\b");
+            }
+            progress=count+" out of "+dataSims.keySet().size();
+            System.out.println(progress);
+            count++;
+
+
+            String key=itr.next();
+            ArrayList<SimElement> simList=dataSims.get(key);
+            for (int i = 0; i < simList.size(); i++) {
+                simList.get(i).CalculateVal();
+            }
+            Collections.sort(simList);
+            temp.put(key,simList);
+        }
+
+//        ArrayList<SimElement> simListA=dataSims.get("MIR182;Survival");
+  //      System.out.println( );
+    //    Collections.sort(simListA);
+        dataSims=temp;
+      //  System.out.println( );
+
+    }
+
+    private void writeSimResults(){
+        System.out.println("Writing file");
+        PrintWriter writer = null;
+        StringBuilder sb=null;
+        try {
+            writer = new PrintWriter("../output/results_Sim.txt", "UTF-8");
+            Iterator<String> itr=dataSims.keySet().iterator();
+
+            int count=1;
+            String progress="";
+            String[] nameNum=new String[]{};
+
+
+            while(itr.hasNext()){
+
+                for (int i = 0; i <progress.length() ; i++) {
+                    System.out.print("\b");
+                }
+                progress=count+" out of "+dataSims.keySet().size();
+                System.out.println(progress);
+                count++;
+
+
+                String key=itr.next();
+                ArrayList<SimElement> smList=dataSims.get(key);
+                sb=new StringBuilder();
+                sb.append(key); //elemet1;element2
+                sb.append(";");
+                float max=Float.MIN_VALUE;
+                int writtenCount=0;
+                for (int i = 0; i < smList.size(); i++) {
+                    if(writtenCount<2) {
+                        SimElement s = smList.get(i);
+                        sb.append(s.name);
+                        sb.append(":");
+                        sb.append(s.val);
+                        if(max!=s.val) {
+                            writtenCount++;
+                            max = Math.max(max, s.val);
+                        }
+
+                        sb.append(":");
+                        for (int j = 0; j <s.matchList.size() ; j++) {
+                            nameNum=s.matchList.get(j);
+                            sb.append(nameNum[0]);
+                            sb.append(",");
+                            sb.append(nameNum[1]);
+                            if(j!=(s.matchList.size()-1)) {
+                                sb.append(".");
+                            }
+                        }
+                        sb.append(":");
+                        for (int j = 0; j <s.nearMatchList.size() ; j++) {
+                            nameNum=s.nearMatchList.get(j);
+                            sb.append(nameNum[0]);
+                            sb.append(",");
+                            sb.append(nameNum[1]);
+                            if(j!=(s.nearMatchList.size()-1)) {
+                                sb.append(".");
+                            }
+                        }
+                        sb.append(":");
+
+
+                        if(writtenCount<2 && i!=(smList.size()+1)) {
+                            sb.append(";");
+                        }
+
+                    }
+
+
+                }
+
+                writer.println(sb.toString());
+
+            }
+
+
+
+
+
+
+
+
+
+            writer.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
     }
 
     private void writeResults(){
